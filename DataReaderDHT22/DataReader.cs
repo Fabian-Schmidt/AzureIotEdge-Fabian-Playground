@@ -21,28 +21,32 @@ namespace DataReaderDHT22
             DataReaderOutput processOutput = null;
             try
             {
-                var process = new System.Diagnostics.Process();
-                process.StartInfo.RedirectStandardError = true;
-                process.StartInfo.RedirectStandardOutput = true;
-                process.StartInfo.CreateNoWindow = true;
-                process.StartInfo.UseShellExecute = false;
-                process.StartInfo.WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden;
-                process.StartInfo.FileName = "go-datareader-dht22";
-                process.StartInfo.Arguments = $" -pin {GPIO_Pin}";
+                using (var process = new System.Diagnostics.Process())
+                {
+                    process.StartInfo.RedirectStandardError = true;
+                    process.StartInfo.RedirectStandardOutput = true;
+                    process.StartInfo.CreateNoWindow = true;
+                    process.StartInfo.UseShellExecute = false;
+                    process.StartInfo.WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden;
+                    process.StartInfo.FileName = "go-datareader-dht22";
+                    process.StartInfo.Arguments = $" -pin {GPIO_Pin}";
 
-                Console.WriteLine($"{process.StartInfo.FileName} {process.StartInfo.Arguments}");
+                    Console.WriteLine($"{process.StartInfo.FileName} {process.StartInfo.Arguments}");
 
-                process.Start();
+                    process.Start();
+                    process.WaitForExit();
 
-                Console.WriteLine("StandardError:");
-                Console.WriteLine(process.StandardError.ReadToEnd());
+                    var stdOut = process.StandardOutput.ReadToEnd();
+                    processOutput = JsonConvert.DeserializeObject<DataReaderOutput>(stdOut);
+                    if (processOutput == null)
+                    {
+                        Console.WriteLine("StandardError:");
+                        Console.WriteLine(process.StandardError.ReadToEnd());
 
-                Console.WriteLine("StandardOutput:");
-                var stdOut = process.StandardOutput.ReadToEnd();
-                Console.WriteLine(stdOut);
-
-                processOutput = JsonConvert.DeserializeObject<DataReaderOutput>(stdOut);
-
+                        Console.WriteLine("StandardOutput:");
+                        Console.WriteLine(stdOut);
+                    }
+                }
                 Console.WriteLine("END");
             }
             catch (Exception ex)
@@ -63,8 +67,8 @@ namespace DataReaderDHT22
                     Retry = processOutput.Retry,
                     TimeCreated = string.Format("{0:O}", DateTime.UtcNow)
                 };
+                return messageBody;
             }
-
             return null;
         }
     }
