@@ -1,0 +1,170 @@
+using System;
+using System.Collections.Generic;
+using System.IO.Ports;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace DataReaderMHZ19.serial
+{
+    public class DataReader//:IDisposable
+    {
+        //See https://revspace.nl/MHZ19
+        private static readonly byte[] ReadGasConcentration = new byte[] { 0xFF, 0x01, 0x86, 0x00, 0x00, 0x00, 0x00, 0x00, 0x79 };
+        private const int READ_INTERVAL = 10 * 1000;
+
+        private bool _continue = true;
+        private SerialPort _serialPort = null;
+        private Thread readThread;
+
+        public DataReader()
+        { }
+
+        public bool Open(byte serialPort)
+        {
+            var desiredPort = $"/dev/ttyS{serialPort}";
+
+            bool isTTY = false;
+            foreach (string s in SerialPort.GetPortNames())
+            {
+                Console.WriteLine($"Serial name: {s}");
+                if (s == desiredPort)
+                {
+                    isTTY = true;
+                }
+            }
+
+            if (!isTTY)
+            {
+                Console.WriteLine($"No '{desiredPort}' serial port!");
+                return false;
+            }
+
+            readThread = new Thread(Read_Thread);
+
+            // Create a new SerialPort object with default settings.
+            _serialPort = new SerialPort();
+
+            // Allow the user to set the appropriate properties.
+            _serialPort.PortName = desiredPort;
+            _serialPort.BaudRate = 9600;
+            _serialPort.Parity = Parity.None;
+            _serialPort.DataBits = 8;
+            _serialPort.StopBits = StopBits.None;
+            _serialPort.Handshake = Handshake.None;
+
+            // Set the read/write timeouts
+            _serialPort.ReadTimeout = 500;
+            _serialPort.WriteTimeout = 500;
+
+            _serialPort.Open();
+            _continue = true;
+            readThread.Start();
+
+            return true;
+        }
+
+        public void Close()
+        {
+            _continue = false;
+            readThread.Join();
+            if (_serialPort != null)
+            {
+                _serialPort.Close();
+                _serialPort = null;
+            }
+        }
+
+        private volatile MessageBody data = null;
+
+        public async Task<MessageBody> ReadGoodValueAsync()
+        {
+            data = null;
+            while (_continue && data == null)
+            {
+                Console.WriteLine("Sending read command to sensor");
+                _serialPort.Write(ReadGasConcentration, 0, ReadGasConcentration.Length);
+                await Task.Delay(250);
+                if (data == null)
+                {
+                    try
+                    {
+                        await Task.Delay(READ_INTERVAL);
+                    }
+                    catch (TaskCanceledException) { }
+                }
+            }
+            return data;
+        }
+
+        private void Read_Thread()
+        {
+            while (_continue)
+            {
+                try
+                {
+                    var BytesToRead = _serialPort.BytesToRead;
+                    if (BytesToRead > 0)
+                    {
+                        Console.WriteLine($"Recieved {BytesToRead} bytes from serial.");
+                    }
+                    if (BytesToRead == 9)
+                    {
+                        byte[] ReadBuffer = new byte[9];
+                        var buffer = _serialPort.Read(ReadBuffer, 0, 9);
+
+                        if (ReadBuffer[0] == 0xFF /* Starting byte */
+                          && ReadBuffer[1] == 0x86 /* command byte */)
+                        {
+                            byte checksum = 0x00;
+                            for (int i = 1; i < 8; i++)
+                            {
+                                checksum += ReadBuffer[i];
+                            }
+                            checksum = (byte)(((byte)0xff) - checksum);
+                            checksum += (byte)1;
+
+                            if (checksum != ReadBuffer[8])
+                            {
+                                Console.Write("CRC error.");
+                            }
+
+                            var temp = (short)(ReadBuffer[4] - 40);
+                            /** accuracy? 0x04, 0x08, 0x10, 0x20, 0x40(best) */
+                            var accuracy = ReadBuffer[5];
+
+                            /** pressure? */
+                            var pressure = (ushort)(ReadBuffer[6] * 256 + ReadBuffer[7]);
+
+                            var value = (ushort)(ReadBuffer[2] * 256 + ReadBuffer[3]);
+
+                            Console.WriteLine($"{accuracy:X2}, {temp:D3}, {pressure:D5}, {value:D4}");
+
+                            if (accuracy >= 0x40 && pressure < 15000)
+                            {
+                                data = new MessageBody()
+                                {
+                                    TimeCreated = string.Format("{0:O}", DateTime.UtcNow),
+                                    CO2 = new CO2()
+                                    {
+                                        Temperature = temp,
+                                        Accuracy = accuracy,
+                                        Pressure = pressure,
+                                        Value = value
+                                    }
+                                };
+                            }
+                        }
+
+                    }
+                    else if (BytesToRead > 9)
+                    {
+                        //Read and ignore all existing data.
+                        _serialPort.ReadExisting();
+                    }
+                }
+                catch (TimeoutException) { }
+                Thread.Sleep(100);
+            }
+        }
+    }
+}

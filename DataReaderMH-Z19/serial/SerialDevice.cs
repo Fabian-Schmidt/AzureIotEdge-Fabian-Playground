@@ -40,15 +40,19 @@ namespace DataReaderMHZ19.serial
             // set baud rate
             byte[] termiosData = new byte[256];
 
-            Libc.tcgetattr(fd, termiosData);
+            var err = Libc.tcgetattr(fd, termiosData);
+            if (err < 0)
+            {
+                throw new Exception($"Error from tcgetattr: {err}");
+            }
             Libc.cfsetspeed(termiosData, baudRate);
             Libc.tcsetattr(fd, 0, termiosData);
             // start reading
-            Task.Run((Action)StartReading, CancellationToken);
+            Task.Run(StartReading, CancellationToken);
             this.fd = fd;
         }
 
-        private void StartReading()
+        private async Task StartReading()
         {
             if (!fd.HasValue)
             {
@@ -69,7 +73,7 @@ namespace DataReaderMHZ19.serial
                     OnDataReceived(buf);
                 }
 
-                Thread.Sleep(50);
+                await Task.Delay(50);
             }
         }
 
@@ -124,7 +128,7 @@ namespace DataReaderMHZ19.serial
                     }
                 }
             }
-            
+
             return serial_ports.ToArray();
         }
 

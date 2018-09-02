@@ -7,14 +7,14 @@ namespace DataReaderMHZ19
 {
     public class MessageBody
     {
-        [JsonProperty("ambient")]
-        public Ambient Ambient { get; set; }
+        [JsonProperty("co2")]
+        public CO2 CO2 { get; set; }
         [JsonProperty("timeCreated")]
         public string TimeCreated { get; set; }
     }
 
-    [JsonObject("ambient")]
-    public class Ambient
+    [JsonObject("co2")]
+    public class CO2
     {
         [JsonProperty("temperature")]
         public short Temperature { get; set; }
@@ -22,7 +22,7 @@ namespace DataReaderMHZ19
         public byte Accuracy { get; set; }
         [JsonProperty("pressure")]
         public ushort Pressure { get; set; }
-        [JsonProperty("co2")]
-        public ushort CO2 { get; set; }
+        [JsonProperty("value")]
+        public ushort Value { get; set; }
     }
 }

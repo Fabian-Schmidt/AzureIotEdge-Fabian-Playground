@@ -15,28 +15,44 @@ namespace DataReaderMHZ19.serial
             O_NONBLOCK = 4,
         }
 
-        [DllImport("libc")]
+        /** from termios.h */
+        [Flags]
+        public enum c_cflag_bits : long
+        {
+            CSIZE = 0x0000060,
+            CS8 = 0x0000060,
+            CSTOPB = 0x0000100,
+            PARENB = 0x0000400,
+
+            CREAD = 0x0000200,
+            CLOCAL = 0x0004000,
+
+            CRTSCTS = 0x020000000000
+        }
+
+
+        [DllImport("libc.so.6")]
         public static extern int getpid();
 
-        [DllImport("libc")]
+        [DllImport("libc.so.6")]
         public static extern int tcgetattr(int fd, [Out] byte[] termios_data);
 
-        [DllImport("libc")]
+        [DllImport("libc.so.6")]
         public static extern int open(string pathname, OpenFlags flags);
 
-        [DllImport("libc")]
+        [DllImport("libc.so.6")]
         public static extern int close(int fd);
 
-        [DllImport("libc")]
+        [DllImport("libc.so.6")]
         public static extern int read(int fd, IntPtr buf, int count);
 
-        [DllImport("libc")]
+        [DllImport("libc.so.6")]
         public static extern int write(int fd, IntPtr buf, int count);
 
-        [DllImport("libc")]
+        [DllImport("libc.so.6")]
         public static extern int tcsetattr(int fd, int optional_actions, byte[] termios_data);
 
-        [DllImport("libc")]
+        [DllImport("libc.so.6")]
         public static extern int cfsetspeed(byte[] termios_data, BaudRate speed);
     }
 }

@@ -20,12 +20,13 @@ namespace DataReaderMHZ19.serial
 
         public bool Open(byte serialPort)
         {
+            var desiredPort = $"/dev/ttyS{serialPort}";
             var ports = SerialDevice.GetPortNames();
             bool isTTY = false;
             foreach (var prt in ports)
             {
-                //Console.WriteLine($"Serial name: {prt}");
-                if (prt.Contains($"ttyS{serialPort}"))
+                Console.WriteLine($"Serial name: {prt}");
+                if (prt == desiredPort)
                 {
                     isTTY = true;
                 }
@@ -33,11 +34,11 @@ namespace DataReaderMHZ19.serial
 
             if (!isTTY)
             {
-                Console.WriteLine($"No ttyS{serialPort} serial port!");
+                Console.WriteLine($"No '{desiredPort}' serial port!");
                 return false;
             }
 
-            mySer = new SerialDevice($"/dev/ttyS{serialPort}", BaudRate.B9600);
+            mySer = new SerialDevice(desiredPort, BaudRate.B9600);
             mySer.DataReceived += MySer_DataReceived;
             mySer.Open();
             return true;
@@ -62,12 +63,12 @@ namespace DataReaderMHZ19.serial
             {
                 //Console.WriteLine("Sending read command to sensor");
                 mySer.Write(ReadGasConcentration);
-                await Task.Delay(250, CancellationToken).ConfigureAwait(false);
+                await Task.Delay(250, CancellationToken);
                 if (data == null)
                 {
                     try
                     {
-                        await Task.Delay(READ_INTERVAL, CancellationToken).ConfigureAwait(false);
+                        await Task.Delay(READ_INTERVAL, CancellationToken);
                     }
                     catch (TaskCanceledException) { }
                 }
@@ -117,38 +118,28 @@ namespace DataReaderMHZ19.serial
 
                     var value = (ushort)(ReadBuffer[2] * 256 + ReadBuffer[3]);
 
+                    Console.WriteLine($"{accuracy:X2}, {temp:D3}, {pressure:D5}, {value:D4}");
+
                     if (accuracy >= 0x40 && pressure < 15000)
                     {
-                        //Console.WriteLine($"{temp:D3}, {pressure:D5}, {value:D4}");
                         data = new MessageBody()
                         {
                             TimeCreated = string.Format("{0:O}", DateTime.UtcNow),
-                            Ambient = new Ambient()
+                            CO2 = new CO2()
                             {
                                 Temperature = temp,
                                 Accuracy = accuracy,
                                 Pressure = pressure,
-                                CO2 = value
+                                Value = value
                             }
                         };
                     }
                 }
                 ReadBuffer = null;
             }
-            else if (arg2.Length != 0)
+            else if (ReadBuffer.Length > 9)
             {
-                if (arg2.Length < 9)
-                {
-                    ReadBuffer = arg2;
-                }
-                else
-                {
-                    /*for (int i = 0; i < ReadBuffer.Length; i++)
-                    {
-                        Console.Write("{0:X2}, ", ReadBuffer[i]);
-                    }*/
-                    ReadBuffer = null;
-                }
+                ReadBuffer = null;
             }
         }
     }

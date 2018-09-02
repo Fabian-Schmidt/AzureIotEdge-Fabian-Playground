@@ -11,8 +11,7 @@ namespace DataReaderMHZ19
     {
         private bool _sendData = true;
         private int _sendInterval = 30;
-        private int _GPIO_Pin = 0;
-        private string _Sensor_Type = "dht22";
+        private byte _serialPort = 0;
 
         public DesiredPropertiesData(TwinCollection twinCollection)
         {
@@ -33,14 +32,9 @@ namespace DataReaderMHZ19
                     }
                 }
 
-                if (twinCollection.Contains("GPIOPin") && twinCollection["GPIOPin"] != null)
+                if (twinCollection.Contains("SerialPort") && twinCollection["SerialPort"] != null)
                 {
-                    _GPIO_Pin = twinCollection["GPIOPin"];
-                }
-
-                if (twinCollection.Contains("SensorType") && twinCollection["SensorType"] != null)
-                {
-                    _Sensor_Type = twinCollection["SensorType"];
+                    _serialPort = twinCollection["SerialPort"];
                 }
             }
             catch (AggregateException aexc)
@@ -58,14 +52,12 @@ namespace DataReaderMHZ19
             {
                 Console.WriteLine($"Value for SendData = {_sendData}");
                 Console.WriteLine($"Value for SendInterval = {_sendInterval}");
-                Console.WriteLine($"Value for GPIOPin = {_GPIO_Pin}");
-                Console.WriteLine($"Value for SensorType = {_Sensor_Type}");
+                Console.WriteLine($"Value for SerialPort = {_serialPort}");
             }
         }
 
         public bool SendData => _sendData;
         public int SendInterval => _sendInterval;
-        public int GPIOPin => _GPIO_Pin;
-        public string SensorType => _Sensor_Type;
+        public byte SerialPort => _serialPort;
     }
 }
