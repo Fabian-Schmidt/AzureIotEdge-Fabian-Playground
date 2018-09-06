@@ -20,22 +20,6 @@ namespace DataReaderDHT22
         static void Main(string[] args)
         {
             Init().Wait();
-
-            // Wait until the app unloads or is cancelled
-            var cts = new CancellationTokenSource();
-            AssemblyLoadContext.Default.Unloading += (ctx) => cts.Cancel();
-            Console.CancelKeyPress += (sender, cpe) => cts.Cancel();
-            WhenCancelled(cts.Token).Wait();
-        }
-
-        /// <summary>
-        /// Handles cleanup operations when app is cancelled or unloads
-        /// </summary>
-        public static Task WhenCancelled(CancellationToken cancellationToken)
-        {
-            var tcs = new TaskCompletionSource<bool>();
-            cancellationToken.Register(s => ((TaskCompletionSource<bool>)s).SetResult(true), tcs);
-            return tcs.Task;
         }
 
         /// <summary>
@@ -91,13 +75,14 @@ namespace DataReaderDHT22
                             Console.WriteLine($"\t{DateTime.UtcNow.ToShortDateString()} {DateTime.UtcNow.ToLongTimeString()}> Sending message body: {messageString}");
                         }
                     }
+                    await Task.Delay(TimeSpan.FromSeconds(desiredPropertiesData.SendInterval));
                 }
                 catch (Exception ex)
                 {
                     Console.WriteLine($"[ERROR] Unexpected Exception {ex.Message}");
                     Console.WriteLine($"\t{ex.ToString()}");
+                    await Task.Delay(TimeSpan.FromSeconds(30));
                 }
-                await Task.Delay(TimeSpan.FromSeconds(desiredPropertiesData.SendInterval));
             }
         }
     }

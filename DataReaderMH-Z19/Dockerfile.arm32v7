@@ -14,4 +14,7 @@ COPY --from=build-env /app/out ./
 RUN useradd -ms /bin/bash moduleuser && adduser moduleuser dialout
 USER moduleuser
 
+# Set environment variables.
+ENV COMPlus_PerfMapEnabled 1
+
 ENTRYPOINT ["dotnet", "DataReaderMHZ19.dll"]

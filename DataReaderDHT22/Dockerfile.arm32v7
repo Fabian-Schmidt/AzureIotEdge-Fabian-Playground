@@ -15,4 +15,7 @@ COPY --from=build-env /app/out ./
 RUN useradd -ms /bin/bash moduleuser
 USER moduleuser
 
+# Set environment variables.
+ENV COMPlus_PerfMapEnabled 1
+
 ENTRYPOINT ["dotnet", "DataReaderDHT22.dll"]
